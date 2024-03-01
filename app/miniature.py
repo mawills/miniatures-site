@@ -7,5 +7,6 @@ class Miniature(BaseModel):
     name: str
     description: str = ""
     image_url: str = ""
-    num_battles: int = 0
     tags: List[str] = []
+    created_at: str = None
+    r_time: str = None
