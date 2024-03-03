@@ -1,9 +1,9 @@
+import random
 from fastapi import FastAPI, HTTPException, status, Depends, Response
-from . import models
+from . import models, schemas
 from .database import engine, get_db
-from .schemas import Miniature
 from sqlalchemy.orm import Session
-from typing import List, Optional
+from typing import List
 
 app = FastAPI()
 
@@ -15,23 +15,35 @@ def root() -> str:
     return "Hello world! I'm alive!"
 
 
-@app.post("/api/miniatures", status_code=status.HTTP_201_CREATED)
-async def create_miniatures(miniature: Miniature, db: Session = Depends(get_db)):
+@app.post(
+    "/api/miniatures",
+    status_code=status.HTTP_201_CREATED,
+    response_model=schemas.Miniature,
+)
+async def create_miniatures(
+    miniature: schemas.MiniatureCreate, db: Session = Depends(get_db)
+):
     new_miniature = models.Miniature(**miniature.dict())
     db.add(new_miniature)
     db.commit()
     db.refresh(new_miniature)
 
-    return {"data": new_miniature}
+    return new_miniature
 
 
-@app.get("/api/miniatures")
+@app.get(
+    "/api/miniatures",
+    response_model=List[schemas.Miniature],
+)
 async def get_miniatures(db: Session = Depends(get_db)):
     miniatures = db.query(models.Miniature).all()
-    return {"data": miniatures}
+    return miniatures
 
 
-@app.get("/api/miniatures/{id}")
+@app.get(
+    "/api/miniatures/{id}",
+    response_model=schemas.Miniature,
+)
 async def get_miniatures(id: int, db: Session = Depends(get_db)):
     miniature = db.query(models.Miniature).filter(models.Miniature.id == id).first()
 
@@ -41,12 +53,15 @@ async def get_miniatures(id: int, db: Session = Depends(get_db)):
             detail=f"post with id {id} not found.",
         )
 
-    return {"data": miniature}
+    return miniature
 
 
-@app.put("/api/miniatures/{id}")
+@app.put(
+    "/api/miniatures/{id}",
+    response_model=schemas.Miniature,
+)
 async def edit_miniatures(
-    id: int, updated_miniature: Miniature, db: Session = Depends(get_db)
+    id: int, updated_miniature: schemas.MiniatureUpdate, db: Session = Depends(get_db)
 ):
     query = db.query(models.Miniature).filter(models.Miniature.id == id)
     miniature = query.first()
@@ -61,7 +76,7 @@ async def edit_miniatures(
 
     db.commit()
 
-    return {"data": updated_miniature}
+    return query.first()
 
 
 @app.delete("/api/miniatures/{id}", status_code=status.HTTP_204_NO_CONTENT)

@@ -1,10 +1,28 @@
+import random
 from pydantic import BaseModel
-from typing import List
+from datetime import datetime
+from typing import Optional
 
 
-class Miniature(BaseModel):
-    id: int
+class MiniatureBase(BaseModel):
     name: str
-    description: str = ""
-    image_url: str = ""
-    # created_at: str
+    description: Optional[str]
+    image_url: Optional[str]
+
+
+class MiniatureCreate(MiniatureBase):
+    id: int = random.randint(1, 9999)
+    pass
+
+
+class MiniatureUpdate(MiniatureBase):
+    id: int
+    pass
+
+
+class Miniature(MiniatureBase):
+    id: int
+    created_at: datetime
+
+    class Config:
+        orm_mode = True
