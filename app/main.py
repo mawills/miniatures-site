@@ -1,6 +1,5 @@
-import random
 from fastapi import FastAPI, HTTPException, status, Depends, Response
-from . import models, schemas
+from . import models, schemas, utils
 from .database import engine, get_db
 from sqlalchemy.orm import Session
 from typing import List
@@ -81,7 +80,7 @@ async def edit_miniatures(
 
 @app.delete("/api/miniatures/{id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_miniatures(id: int, db: Session = Depends(get_db)) -> Response:
-    # Can update this function or use a new one to update rtime rather than truly delete from db
+    # Can update this function or use a new one to update rtime col rather than truly delete from db
     miniature = db.query(models.Miniature).filter(models.Miniature.id == id)
 
     if miniature.first() == None:
@@ -94,3 +93,37 @@ async def delete_miniatures(id: int, db: Session = Depends(get_db)) -> Response:
     db.commit()
 
     return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@app.post(
+    "/api/users", status_code=status.HTTP_201_CREATED, response_model=schemas.User
+)
+async def create_users(user: schemas.UserCreate, db: Session = Depends(get_db)):
+    hashed_password = utils.hash(user.password)
+    user.password = hashed_password
+
+    new_user = models.User(**user.dict())
+    db.add(new_user)
+    db.commit()
+    db.refresh(new_user)
+
+    return new_user
+
+
+@app.get("/api/users", response_model=List[schemas.User])
+async def get_users(db: Session = Depends(get_db)):
+    users = db.query(models.User).all()
+    return users
+
+
+@app.get("/api/users/{id}", response_model=schemas.User)
+async def get_user(id: int, db: Session = Depends(get_db)):
+    user = db.query(models.User).filter(models.User.id == id).first()
+
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"post with id {id} not found.",
+        )
+
+    return user
