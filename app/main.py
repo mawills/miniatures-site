@@ -1,13 +1,13 @@
-from fastapi import FastAPI, HTTPException, status
-from app.miniature import Miniature
-from app.DatabaseConnection import DatabaseConnection
+from fastapi import FastAPI, HTTPException, status, Depends, Response
+from . import models
+from .database import engine, get_db
+from .schemas import Miniature
+from sqlalchemy.orm import Session
 from typing import List, Optional
 
 app = FastAPI()
 
-db = DatabaseConnection()
-conn = db.connect()
-cursor = conn.cursor()
+models.Base.metadata.create_all(bind=engine)
 
 
 @app.get("/")
@@ -16,38 +16,24 @@ def root() -> str:
 
 
 @app.post("/api/miniatures", status_code=status.HTTP_201_CREATED)
-async def create_miniatures(miniature: Miniature) -> str:
-    cursor.execute(
-        """INSERT INTO miniatures (id, name, description, image_url, tags) VALUES (%s, %s, %s, %s, %s) RETURNING *""",
-        (
-            miniature.id,
-            miniature.name,
-            miniature.description,
-            miniature.image_url,
-            miniature.tags,
-        ),
-    )
-    new_miniature = cursor.fetchall()
-    conn.commit()
+async def create_miniatures(miniature: Miniature, db: Session = Depends(get_db)):
+    new_miniature = models.Miniature(**miniature.dict())
+    db.add(new_miniature)
+    db.commit()
+    db.refresh(new_miniature)
 
-    return new_miniature
-
-
-# bulk add miniature api
+    return {"data": new_miniature}
 
 
 @app.get("/api/miniatures")
-async def get_miniatures() -> List[Miniature]:
-    cursor.execute("""SELECT * FROM miniatures""")
-    miniatures = cursor.fetchall()
-
-    return miniatures
+async def get_miniatures(db: Session = Depends(get_db)):
+    miniatures = db.query(models.Miniature).all()
+    return {"data": miniatures}
 
 
 @app.get("/api/miniatures/{id}")
-async def get_miniatures(id: int) -> Optional[Miniature]:
-    cursor.execute("""SELECT * FROM miniatures WHERE id=%s""", (id,))
-    miniature = cursor.fetchone()
+async def get_miniatures(id: int, db: Session = Depends(get_db)):
+    miniature = db.query(models.Miniature).filter(models.Miniature.id == id).first()
 
     if not miniature:
         raise HTTPException(
@@ -55,46 +41,41 @@ async def get_miniatures(id: int) -> Optional[Miniature]:
             detail=f"post with id {id} not found.",
         )
 
-    return miniature
+    return {"data": miniature}
 
 
 @app.put("/api/miniatures/{id}")
-async def edit_miniatures(id: int, miniature: Miniature) -> Optional[Miniature]:
-    cursor.execute(
-        """UPDATE miniatures SET name=%s, description=%s, image_url=%s, tags=%s WHERE id=%s RETURNING *""",
-        (
-            miniature.name,
-            miniature.description,
-            miniature.image_url,
-            miniature.tags,
-            id,
-        ),
-    )
-    updated_miniature = cursor.fetchone()
+async def edit_miniatures(
+    id: int, updated_miniature: Miniature, db: Session = Depends(get_db)
+):
+    query = db.query(models.Miniature).filter(models.Miniature.id == id)
+    miniature = query.first()
 
-    if not updated_miniature:
+    if miniature == None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"post with id {id} not found.",
+            detail=f"miniature with id {id} not found.",
         )
 
-    conn.commit()
+    query.update(updated_miniature.dict(), synchronize_session=False)
 
-    return updated_miniature
+    db.commit()
+
+    return {"data": updated_miniature}
 
 
-@app.delete("/api/miniatures/{id}")
-async def delete_miniatures(id: int) -> str:
+@app.delete("/api/miniatures/{id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_miniatures(id: int, db: Session = Depends(get_db)) -> Response:
     # Can update this function or use a new one to update rtime rather than truly delete from db
-    cursor.execute("""DELETE FROM miniatures WHERE id=%s RETURNING *""", (id,))
-    deleted_miniature = cursor.fetchone()
+    miniature = db.query(models.Miniature).filter(models.Miniature.id == id)
 
-    if not deleted_miniature:
+    if miniature.first() == None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"post with id {id} not found.",
+            detail=f"miniature with id {id} not found.",
         )
 
-    conn.commit()
+    miniature.delete(synchronize_session=False)
+    db.commit()
 
-    return deleted_miniature
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
