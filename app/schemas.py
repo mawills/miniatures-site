@@ -37,6 +37,10 @@ class UserCreate(UserBase):
     pass
 
 
+class UserUpdate(BaseModel):
+    pass
+
+
 class User(BaseModel):
     id: int
     email: EmailStr
