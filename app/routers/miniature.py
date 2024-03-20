@@ -15,7 +15,7 @@ router = APIRouter(tags=["Miniatures"])
 async def create_miniatures(
     miniature: schemas.MiniatureCreate,
     db: Session = Depends(get_db),
-    user_id: int = Depends(oauth2.get_current_user),
+    current_user: int = Depends(oauth2.get_current_user),
 ):
     new_miniature = models.Miniature(**miniature.dict())
     db.add(new_miniature)
@@ -58,7 +58,7 @@ async def update_miniatures(
     id: int,
     updated_miniature: schemas.MiniatureUpdate,
     db: Session = Depends(get_db),
-    user_id: int = Depends(oauth2.get_current_user),
+    current_user: int = Depends(oauth2.get_current_user),
 ):
     query = db.query(models.Miniature).filter(models.Miniature.id == id)
     miniature = query.first()
@@ -80,7 +80,7 @@ async def update_miniatures(
 async def delete_miniatures(
     id: int,
     db: Session = Depends(get_db),
-    user_id: int = Depends(oauth2.get_current_user),
+    current_user: int = Depends(oauth2.get_current_user),
 ) -> Response:
     # Can update this function or use a new one to update rtime col rather than truly delete from db
     miniature = db.query(models.Miniature).filter(models.Miniature.id == id)

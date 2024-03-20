@@ -46,7 +46,7 @@ async def update_users(
     id: int,
     updated_user: schemas.UserUpdate,
     db: Session = Depends(get_db),
-    user_id: int = Depends(oauth2.get_current_user),
+    current_user: int = Depends(oauth2.get_current_user),
 ):
     query = db.query(models.User).filter(models.user.id == id)
     user = query.first()
