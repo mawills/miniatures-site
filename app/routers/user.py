@@ -1,7 +1,7 @@
 from fastapi import HTTPException, status, Depends, APIRouter
 from sqlalchemy.orm import Session
 from typing import List
-from .. import models, schemas, utils
+from .. import models, schemas, utils, oauth2
 from ..database import get_db
 
 router = APIRouter(tags=["Users"])
@@ -43,7 +43,10 @@ async def get_user(id: int, db: Session = Depends(get_db)):
 
 @router.put("/api/users", response_model=schemas.User)
 async def update_users(
-    id: int, updated_user: schemas.UserUpdate, db: Session = Depends(get_db)
+    id: int,
+    updated_user: schemas.UserUpdate,
+    db: Session = Depends(get_db),
+    user_id: int = Depends(oauth2.get_current_user),
 ):
     query = db.query(models.User).filter(models.user.id == id)
     user = query.first()

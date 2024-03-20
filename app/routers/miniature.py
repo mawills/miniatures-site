@@ -1,7 +1,7 @@
 from fastapi import HTTPException, status, Depends, Response, APIRouter
 from sqlalchemy.orm import Session
 from typing import List
-from .. import models, schemas
+from .. import models, schemas, oauth2
 from ..database import get_db
 
 router = APIRouter(tags=["Miniatures"])
@@ -13,7 +13,9 @@ router = APIRouter(tags=["Miniatures"])
     response_model=schemas.Miniature,
 )
 async def create_miniatures(
-    miniature: schemas.MiniatureCreate, db: Session = Depends(get_db)
+    miniature: schemas.MiniatureCreate,
+    db: Session = Depends(get_db),
+    user_id: int = Depends(oauth2.get_current_user),
 ):
     new_miniature = models.Miniature(**miniature.dict())
     db.add(new_miniature)
@@ -36,7 +38,7 @@ async def get_miniatures(db: Session = Depends(get_db)):
     "/api/miniatures/{id}",
     response_model=schemas.Miniature,
 )
-async def get_miniatures(id: int, db: Session = Depends(get_db)):
+async def get_miniature(id: int, db: Session = Depends(get_db)):
     miniature = db.query(models.Miniature).filter(models.Miniature.id == id).first()
 
     if not miniature:
@@ -53,7 +55,10 @@ async def get_miniatures(id: int, db: Session = Depends(get_db)):
     response_model=schemas.Miniature,
 )
 async def update_miniatures(
-    id: int, updated_miniature: schemas.MiniatureUpdate, db: Session = Depends(get_db)
+    id: int,
+    updated_miniature: schemas.MiniatureUpdate,
+    db: Session = Depends(get_db),
+    user_id: int = Depends(oauth2.get_current_user),
 ):
     query = db.query(models.Miniature).filter(models.Miniature.id == id)
     miniature = query.first()
@@ -72,7 +77,11 @@ async def update_miniatures(
 
 
 @router.delete("/api/miniatures/{id}", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_miniatures(id: int, db: Session = Depends(get_db)) -> Response:
+async def delete_miniatures(
+    id: int,
+    db: Session = Depends(get_db),
+    user_id: int = Depends(oauth2.get_current_user),
+) -> Response:
     # Can update this function or use a new one to update rtime col rather than truly delete from db
     miniature = db.query(models.Miniature).filter(models.Miniature.id == id)
 
